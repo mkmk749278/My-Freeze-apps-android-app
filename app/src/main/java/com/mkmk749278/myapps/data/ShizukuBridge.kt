@@ -63,14 +63,25 @@ object ShizukuBridge {
         }
 
         runCatching {
-            // Shizuku 13.x keeps shell process creation behind a non-public helper, so this bridge
-            // intentionally pins behavior to that API surface until an equivalent public API exists.
-            val method = Shizuku::class.java.getDeclaredMethod(
-                "newProcess",
-                Array<String>::class.java,
-                Array<String>::class.java,
-                String::class.java,
-            ).apply { isAccessible = true }
+            if (Shizuku.getVersion() < 13) {
+                return@withContext RootShell.ShellResult(
+                    exitCode = -1,
+                    stdout = "",
+                    stderr = "The connected Shizuku service version is too old for shell execution support.",
+                )
+            }
+            val method = Shizuku::class.java.declaredMethods.firstOrNull { candidate ->
+                candidate.name == "newProcess" &&
+                    candidate.parameterTypes.contentEquals(
+                        arrayOf(Array<String>::class.java, Array<String>::class.java, String::class.java),
+                    )
+            }?.apply {
+                isAccessible = true
+            } ?: return@withContext RootShell.ShellResult(
+                exitCode = -1,
+                stdout = "",
+                stderr = "This Shizuku API build does not expose the shell bridge required for package commands.",
+            )
             val process = method.invoke(null, arrayOf("sh", "-c", command), null, null) as Process
             val stdout = process.inputStream.bufferedReader().readText().trim()
             val stderr = process.errorStream.bufferedReader().readText().trim()

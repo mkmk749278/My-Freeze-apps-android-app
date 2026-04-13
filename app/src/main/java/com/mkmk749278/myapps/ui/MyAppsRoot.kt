@@ -250,12 +250,12 @@ private fun QuickActionsPanel(
     onUnfreezeAll: () -> Unit,
     onToggleDashboardOptions: () -> Unit,
 ) {
-    androidx.compose.foundation.layout.Column(
+    Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.End,
     ) {
         AnimatedVisibility(visible = expanded, enter = fadeIn() + slideInVertically(), exit = fadeOut() + slideOutVertically()) {
-            androidx.compose.foundation.layout.Column(
+            Column(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End,
             ) {

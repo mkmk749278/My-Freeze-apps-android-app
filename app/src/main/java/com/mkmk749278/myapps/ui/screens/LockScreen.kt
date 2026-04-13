@@ -130,7 +130,7 @@ fun LockScreen(
                     }
                 } else {
                     Text(
-                        text = "Biometric unlock is enabled, but the device has no compatible enrolled biometric. Screen-lock credentials remain the system fallback when biometrics are available.",
+                        text = "Biometric unlock is enabled, but the device has no enrolled biometric. Screen-lock credentials will remain the fallback after a biometric is enrolled.",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 16.dp),
                     )
