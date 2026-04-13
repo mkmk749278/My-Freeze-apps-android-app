@@ -63,6 +63,8 @@ object ShizukuBridge {
         }
 
         runCatching {
+            // Shizuku 13.x keeps shell process creation behind a non-public helper, so this bridge
+            // intentionally pins behavior to that API surface until an equivalent public API exists.
             val method = Shizuku::class.java.getDeclaredMethod(
                 "newProcess",
                 Array<String>::class.java,

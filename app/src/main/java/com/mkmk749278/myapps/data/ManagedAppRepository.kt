@@ -123,7 +123,17 @@ class ManagedAppRepository(
         return "pm enable $escaped || pm unhide --user 0 $escaped || cmd package unsuspend --user 0 $escaped"
     }
 
-    private fun String.shellEscape(): String = "'" + replace("'", "'\"'\"'") + "'"
+    private fun String.shellEscape(): String = buildString(length + 2) {
+        append('\'')
+        this@shellEscape.forEach { character ->
+            if (character == '\'') {
+                append("'\\''")
+            } else {
+                append(character)
+            }
+        }
+        append('\'')
+    }
 }
 
 data class AccessStatus(

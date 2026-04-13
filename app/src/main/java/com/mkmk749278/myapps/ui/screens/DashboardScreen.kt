@@ -230,11 +230,19 @@ private fun DashboardOptionsSheet(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OptionActionRow(label = if (app.isFrozen) "Freeze Again" else "Freeze", icon = Icons.Rounded.Lock) {
+            OptionActionRow(
+                label = "Freeze",
+                icon = Icons.Rounded.Lock,
+                enabled = !app.isFrozen,
+            ) {
                 onDismiss()
                 onFreeze(app.packageName)
             }
-            OptionActionRow(label = "Unfreeze", icon = Icons.Rounded.LockOpen) {
+            OptionActionRow(
+                label = "Unfreeze",
+                icon = Icons.Rounded.LockOpen,
+                enabled = app.isFrozen,
+            ) {
                 onDismiss()
                 onUnfreeze(app.packageName)
             }
@@ -254,9 +262,10 @@ private fun DashboardOptionsSheet(
 private fun OptionActionRow(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(onClick = onClick, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -265,7 +274,11 @@ private fun OptionActionRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, contentDescription = null)
-            Text(label, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
