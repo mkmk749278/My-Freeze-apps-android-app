@@ -1,0 +1,103 @@
+name: Build My Apps APK
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-apks:
+    name: Build debug and release APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle and scripts executable
+        run: chmod +x ./gradlew ./scripts/*.sh
+
+      - name: Build APKs with logging and retry
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p build-logs
+
+          echo "[workflow] run_id=${GITHUB_RUN_ID}" | tee "build-logs/workflow-summary.log"
+          echo "[workflow] ref=${GITHUB_REF}" | tee -a "build-logs/workflow-summary.log"
+          echo "[workflow] sha=${GITHUB_SHA}" | tee -a "build-logs/workflow-summary.log"
+          echo "[workflow] java=$(java -version 2>&1 | tr '\n' ' ')" | tee -a "build-logs/workflow-summary.log"
+
+          retry_gradle_build() {
+            local variant="$1"
+            local task="$2"
+            local command="$3"
+            local max_attempts=3
+            local attempt
+
+            for attempt in $(seq 1 "${max_attempts}"); do
+              local log_file="build-logs/${variant}-attempt-${attempt}.log"
+              echo "[build] variant=${variant} attempt=${attempt}/${max_attempts} task=${task}" | tee -a "build-logs/workflow-summary.log"
+
+              if bash -o pipefail -c "${command}" 2>&1 | tee "${log_file}"; then
+                echo "[build] variant=${variant} status=success attempt=${attempt}" | tee -a "build-logs/workflow-summary.log"
+                return 0
+              fi
+
+              echo "[build] variant=${variant} status=failed attempt=${attempt}" | tee -a "build-logs/workflow-summary.log"
+              if [[ "${attempt}" -lt "${max_attempts}" ]]; then
+                echo "[build] retrying ${variant} after 15 seconds" | tee -a "build-logs/workflow-summary.log"
+                sleep 15
+              fi
+            done
+
+            return 1
+          }
+
+          retry_gradle_build "debug" "assembleDebug" "./gradlew --no-daemon --stacktrace clean testDebugUnitTest :app:assembleDebug"
+          retry_gradle_build "release" "assembleRelease" "./gradlew --no-daemon --stacktrace :app:assembleRelease"
+
+          echo "[build] generated APK files:" | tee -a "build-logs/workflow-summary.log"
+          find app/build/outputs/apk -type f -name '*.apk' -print | sort | tee -a "build-logs/workflow-summary.log"
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-apps-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-apps-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-apps-build-logs
+          path: build-logs
+          if-no-files-found: warn
