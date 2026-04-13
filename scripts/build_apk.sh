@@ -11,6 +11,9 @@ mkdir -p "$LOG_DIR" "$ARTIFACT_DIR"
 
 timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
 summary_log="$LOG_DIR/build-summary-$timestamp.log"
+debug_apk="$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+release_apk="$ROOT_DIR/app/build/outputs/apk/release/app-release.apk"
+
 echo "[build] root=$ROOT_DIR" | tee "$summary_log"
 echo "[build] max_attempts=$MAX_ATTEMPTS" | tee -a "$summary_log"
 echo "[build] gradle_cmd=$GRADLE_CMD" | tee -a "$summary_log"
@@ -24,23 +27,26 @@ for host in ("services.gradle.org", "dl.google.com"):
         print(f"[build] dns {host} unavailable: {exc}")
 PY
 
-build_target="assembleRelease"
-final_candidate="$ROOT_DIR/app/build/outputs/apk/release/app-release.apk"
-
 for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
   attempt_log="$LOG_DIR/build-attempt-${attempt}-$timestamp.log"
-  echo "[build] attempt=$attempt target=$build_target" | tee -a "$summary_log"
-  if "$GRADLE_CMD" --no-daemon --stacktrace clean testDebugUnitTest ":app:$build_target" 2>&1 | tee "$attempt_log"; then
-    if [[ -f "$final_candidate" ]]; then
-      cp "$final_candidate" "$FINAL_APK"
+  echo "[build] attempt=$attempt tasks=clean,testDebugUnitTest,assembleDebug,assembleRelease" | tee -a "$summary_log"
+  if "$GRADLE_CMD" --no-daemon --stacktrace clean testDebugUnitTest :app:assembleDebug :app:assembleRelease 2>&1 | tee "$attempt_log"; then
+    if [[ -f "$release_apk" ]]; then
+      cp "$release_apk" "$FINAL_APK"
+      echo "[build] release_apk=$release_apk" | tee -a "$summary_log"
+      echo "[build] final_apk=$FINAL_APK" | tee -a "$summary_log"
+      "$ROOT_DIR/scripts/verify_apk.sh" "$FINAL_APK" | tee -a "$summary_log"
+      exit 0
+    fi
+    if [[ -f "$debug_apk" ]]; then
+      cp "$debug_apk" "$FINAL_APK"
+      echo "[build] debug_apk=$debug_apk" | tee -a "$summary_log"
       echo "[build] final_apk=$FINAL_APK" | tee -a "$summary_log"
       "$ROOT_DIR/scripts/verify_apk.sh" "$FINAL_APK" | tee -a "$summary_log"
       exit 0
     fi
   fi
   echo "[build] attempt=$attempt failed" | tee -a "$summary_log"
-  build_target="assembleDebug"
-  final_candidate="$ROOT_DIR/app/build/outputs/apk/debug/app-debug.apk"
 done
 
 echo "[build] exhausted attempts without a valid APK" | tee -a "$summary_log"

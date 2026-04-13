@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import com.mkmk749278.myapps.model.ManagedApp
+import com.mkmk749278.myapps.model.OperationBackend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -33,6 +34,22 @@ class ManagedAppRepository(
             }
             .sortedWith(compareBy<ManagedApp>({ !it.isSelected }, { it.label.lowercase() }))
             .toList()
+    }
+
+    fun resolveBackend(): AccessStatus {
+        val rootAvailable = RootShell.isRootAvailable()
+        val shizukuAvailability = ShizukuBridge.availability()
+        val backend = when {
+            rootAvailable -> OperationBackend.Root
+            shizukuAvailability.isReady -> OperationBackend.Shizuku
+            else -> OperationBackend.Unavailable
+        }
+        return AccessStatus(
+            backend = backend,
+            rootAvailable = rootAvailable,
+            shizukuAvailable = shizukuAvailability.installedAndRunning,
+            shizukuPermissionGranted = shizukuAvailability.permissionGranted,
+        )
     }
 
     suspend fun freezeApp(packageName: String): Result<Unit> = changeFrozenState(packageName, frozen = true)
@@ -70,11 +87,20 @@ class ManagedAppRepository(
 
     private suspend fun changeFrozenState(packageName: String, frozen: Boolean): Result<Unit> {
         val command = if (frozen) freezeCommand(packageName) else unfreezeCommand(packageName)
-        val result = RootShell.execute(command)
+        val accessStatus = resolveBackend()
+        val result = when (accessStatus.backend) {
+            OperationBackend.Root -> RootShell.execute(command)
+            OperationBackend.Shizuku -> ShizukuBridge.execute(command)
+            OperationBackend.Unavailable -> RootShell.ShellResult(
+                exitCode = -1,
+                stdout = "",
+                stderr = "Root or Shizuku access is required for this action.",
+            )
+        }
         return if (result.isSuccess) {
             Result.success(Unit)
         } else {
-            Result.failure(IllegalStateException(result.stderr.ifBlank { result.stdout.ifBlank { "Root command failed." } }))
+            Result.failure(IllegalStateException(result.stderr.ifBlank { result.stdout.ifBlank { "Command failed." } }))
         }
     }
 
@@ -97,5 +123,12 @@ class ManagedAppRepository(
         return "pm enable $escaped || pm unhide --user 0 $escaped || cmd package unsuspend --user 0 $escaped"
     }
 
-    private fun String.shellEscape(): String = "'" + replace("'", "'\''") + "'"
+    private fun String.shellEscape(): String = "'" + replace("'", "'\\''") + "'"
 }
+
+data class AccessStatus(
+    val backend: OperationBackend,
+    val rootAvailable: Boolean,
+    val shizukuAvailable: Boolean,
+    val shizukuPermissionGranted: Boolean,
+)
