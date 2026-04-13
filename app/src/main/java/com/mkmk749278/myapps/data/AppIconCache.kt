@@ -7,7 +7,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 
 object AppIconCache {
-    private val cache = object : LruCache<String, ImageBitmap>(160) {}
+    private const val ICON_CACHE_CAPACITY = 160
+
+    private val cache = object : LruCache<String, ImageBitmap>(ICON_CACHE_CAPACITY) {}
 
     fun load(context: Context, packageName: String): ImageBitmap? {
         cache.get(packageName)?.let { return it }
