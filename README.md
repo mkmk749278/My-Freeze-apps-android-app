@@ -31,3 +31,4 @@ Production-ready Kotlin/Jetpack Compose Android utility for curating installed a
 ```
 
 The script writes logs to `build-logs/` and copies the selected final artifact to `artifacts/MyApps-final.apk`.
+It also logs DNS access for `services.gradle.org` and `dl.google.com`, because Android Gradle Plugin and AndroidX dependencies require Google Maven connectivity during the first build.
