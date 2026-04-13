@@ -2,6 +2,7 @@ package com.mkmk749278.myapps.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,7 +70,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsCard(title: String, content: @Composable Column.() -> Unit) {
+private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card {
         Column(
             modifier = Modifier.padding(20.dp),
