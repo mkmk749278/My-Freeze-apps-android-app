@@ -81,9 +81,9 @@ fun DashboardScreen(
         }
     }
 
-    if (selectedApp != null) {
+    selectedApp?.let { currentApp ->
         DashboardOptionsSheet(
-            app = selectedApp!!,
+            app = currentApp,
             onDismiss = { selectedApp = null },
             onFreeze = onFreeze,
             onUnfreeze = onUnfreeze,
