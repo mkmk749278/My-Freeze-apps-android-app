@@ -162,7 +162,6 @@ private fun DashboardAppTile(
 
     Card(
         modifier = Modifier
-            .animateItem()
             .aspectRatio(1f)
             .combinedClickable(
                 onClick = { onLaunch(app.packageName) },
